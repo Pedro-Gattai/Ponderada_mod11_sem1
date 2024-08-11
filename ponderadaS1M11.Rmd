@@ -1,0 +1,192 @@
+# Carregamento e preparação dos dados
+
+```{r install}
+library(ggplot2)
+library(dplyr)
+library(gridExtra)
+library(corrplot)
+library(FactoMineR)
+library(factoextra)
+```
+
+## Carregar os dados e visualização das primeiras linhas
+
+```{r dataUpdate}
+dados <- rbind(X2024, X2023, X2022)
+head(dados)
+```
+
+## Verificação da estrutura dos dados
+
+```{r validStructureOfData}
+str(dados)
+```
+
+## Resumo estatistico
+
+```{r statitics }
+summary(dados) 
+```
+
+## Descrição das variaveis
+
+-   data: É a data que o vendedor realizou uma venda
+-   cod_prod: É o codigo do produto vendido pelo vendedor
+-   cod_vendedor: É a indentificação do vendedor
+-   preco: É o preco do produto multiplicado pela quantidade vendida
+-   cod_loja: É o codigo indentificador da loja que foi vendido os produtos
+-   cod_transacao: É o codigo indentificador da transação
+-   quantidade: É a quantidade de produtos vendido pelo vendedor
+
+# Analise Univariada
+
+```{r historigram}
+# Histograma para a quantidade
+ggplot(dados, aes(x = quantidade)) +
+  geom_histogram(bins = 30, fill = "green", color = "black") +
+  labs(title = "Histograma de Quantidade", x = "Quantidade", y = "Frequência")
+```
+
+## Outliers
+
+```{r outliers}
+# Cálculo dos quantis e do IQR para preco
+quantile_preco <- quantile(dados$preco, probs = c(0.25, 0.75))
+IQR_preco <- quantile_preco[2] - quantile_preco[1]
+
+# Cálculo dos quantis e do IQR para quantidade
+quantile_quantidade <- quantile(dados$quantidade, probs = c(0.25, 0.75))
+IQR_quantidade <- quantile_quantidade[2] - quantile_quantidade[1]
+
+# Ajustando os limites inferiores para não permitir valores negativos
+lower_bound_preco <- max(0, quantile_preco[1] - 1.5 * IQR_preco)
+lower_bound_quantidade <- max(0, quantile_quantidade[1] - 1.5 * IQR_quantidade)
+
+# Limites superiores para identificação de outliers
+upper_bound_preco <- quantile_preco[2] + 1.5 * IQR_preco
+upper_bound_quantidade <- quantile_quantidade[2] + 1.5 * IQR_quantidade
+
+# Identificando outliers considerando os limites ajustados para preco
+outliers_preco <- dados %>% 
+  filter(preco > upper_bound_preco)
+
+# Identificando outliers considerando os limites ajustados para quantidade
+outliers_quantidade <- dados %>% 
+  filter(quantidade > upper_bound_quantidade)
+
+# Visualização dos resultados
+print("Ajustes nos Limiares:")
+print(paste("Limite Inferior Preco:", lower_bound_preco))
+print(paste("Limite Superior Preco:", upper_bound_preco))
+print(paste("Limite Inferior Quantidade:", lower_bound_quantidade))
+print(paste("Limite Superior Quantidade:", upper_bound_quantidade))
+
+print("Outliers em Preco:")
+print(outliers_preco)
+
+print("Outliers em Quantidade:")
+print(outliers_quantidade)
+```
+
+Com o calculo do interquartil não foi encontrado nenhum outlier.
+
+# Analise Bivariada
+
+## Gráfico de dispersão
+
+```{r scatterplot}
+# Gráfico de dispersão entre preço e quantidade
+ggplot(dados, aes(x = quantidade, y = preco)) +
+  geom_point(alpha = 0.5) +
+  ggtitle("Dispersão entre Preço e Quantidade") +
+  xlab("Quantidade") +
+  ylab("Preço")
+```
+
+## Matriz de correlação
+
+```{r correlationMatrix}
+numeric_data <- dados[, c("preco", "quantidade")]  
+
+# Calculando a matriz de correlação
+cor_matrix <- cor(numeric_data, use = "pairwise.complete.obs") 
+
+# Método Number
+corrplot(cor_matrix, method = "number")
+```
+
+# Analise Multivariada
+
+## Análise de Componentes Principais (PCA)
+
+```{r }
+dados2024 <-   X2024
+dados_num <- dados2024[, sapply(dados2024, is.numeric)]
+
+# Executando PCA
+res.pca <- PCA(dados_num, graph = FALSE)
+
+# Visualizando os resultados da PCA sem a coluna categoria
+fviz_pca_ind(res.pca,
+             geom.ind = "point", 
+             addEllipses = TRUE,
+             legend.title = "Observations")
+
+# Extrai os loadings dos componentes principais
+loadings <- res.pca$var$coord  
+print(loadings)
+```
+
+```{r}
+dados_num1 <- dados_num[, !colnames(dados_num) %in% c("cod_vendedor", "cod_prod")]
+res.pca1 <- PCA(dados_num1, graph = FALSE)
+
+fviz_pca_ind(res.pca1,
+             geom.ind = "point", 
+             addEllipses = TRUE, 
+             legend.title = "Observations")
+loadings <- res.pca1$var$coord 
+print(loadings)
+```
+
+## Interpretação dos componentes principais
+
+### Primeira Análise PCA
+
+A primeira análise incluiu todas as variáveis numéricas, incluindo os códigos identificadores (cod_vendedor e cod_prod). Os loadings principais, que medem a contribuição de cada variável para os componentes principais, foram:
+
+Dimensão 1 (34% da variância explicada): preco e quantidade têm loadings altos e positivos, indicando que essas duas variáveis são as mais influentes nesta dimensão. Dimensão 2 (25% da variância explicada): cod_vendedor tem um loading muito alto, significando que essa variável tem um forte impacto nesta dimensão. Isto pode ser devido à variabilidade entre vendedores. Dimensões 3 e 4: Menores contribuições de cod_prod e outras variáveis.
+
+A análise revela que enquanto preco e quantidade são importantes na primeira dimensão, os identificadores como cod_vendedor e cod_prod influenciam significativamente as outras dimensões. Isso pode ser problemático, pois identificadores não devem idealmente influenciar a análise. Eles não representam variáveis de interesse mas sim categorias, o que distorce interpretações.
+
+### Segunda Análise PCA
+
+Na segunda análise, foi excluido os identificadores, deixando apenas quantidade e preco. Os resultados foram:
+
+Dimensão 1 (67.9% da variância explicada): Ambas quantidade e preco têm loadings idênticos e positivos, sugerindo que eles variam juntos e contribuem igualmente para esta dimensão. Dimensão 2 (32.1% da variância explicada): Os sinais opostos de quantidade e preco nesta dimensão indicam que eles têm uma relação inversa quando considerados sob esta perspectiva.
+
+Esta análise sugere uma estrutura mais simplificada e clara, onde as duas variáveis remanescentes explicam totalmente a variância nos dados, sem a confusão introduzida pelos identificadores.
+
+### Interpretação e Discussão:
+
+-   Influência dos Identificadores: A exclusão dos códigos identificadores na segunda análise resultou em uma explicação mais clara e mais útil da variância nos dados. Isso sugere que incluir identificadores pode não ser ideal para análises como PCA, onde o interesse está em entender relações sublinhantes entre variáveis de interesse.
+
+-   Relações entre Variáveis: Na primeira análise, a dimensão que captura a maior parte da variância estava associada ao preco e quantidade, sugerindo que estas variáveis têm um papel fundamental nos seus dados. Na segunda análise, essas duas variáveis também explicaram toda a variância, destacando sua importância.
+
+-   Decisões para Análise Futura: Dependendo do objetivo com a análise PCA, pode-se continuar explorando sem os identificadores ou considerar outras transformações dos dados para melhor capturar as relações de interesse.
+
+# Conslusão e discusão
+
+## Sumario das descobertas
+
+Na analise univariada ao aplicar o histograma é possivel perceber a frenquencia com que essas quantidades são vendidas e podemos perceber a partir dela que temos uma menor frequencia de vendas de sete ou mais produtos, tendo uma frenquencia muito mais relevante na venda de até seis produtos.
+
+Na analise bivariada usando da matriz de correlação e do grafico de dispersão podemos perceber mais sobre a correlação preco/quantidade, no grafico de dispersão parece termos uma correlação grande entre essas variaveis, mas ao ver a matriz de correlação percebemos que a correlação entre essas variaveis é de 0.38 o que não é algo tão alto.
+
+Na analise multivariada fizemos duas analises uma com os dados preco, quantidade, cod_vendedor e cod_prod e outra apenas com preco e quantidade das quais obtivemos resultados bem diferentes, é descorrido mais sobre o assunto na seção "Interpretação dos componentes principais"
+
+## Discussão sobre limitações e possiveis melhorias
+
+Algo que me limitou foi o poder computacional que eu tinha a disposição, por conta disso não consegui analisar todos os datasets disponiveis, outra limitação foi a falta de conhecimento sobre analises de dados, que é um assunto que entendo apenas o basico.
+
+De possiveis melhorias acredito que na analise multivariuada seria possivel fazer um algum tratamento dos dados de cod_prod e cod_vendedor para serem variaveis mais acertivas nessa analise.
