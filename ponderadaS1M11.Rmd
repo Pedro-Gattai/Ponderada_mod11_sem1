@@ -12,6 +12,9 @@ library(factoextra)
 ## Carregar os dados e visualização das primeiras linhas
 
 ```{r dataUpdate}
+X2024 <- read.csv("D:/Usuarios/Admin/Downloads/2024.csv")
+X2023 <- read.csv("D:/Usuarios/Admin/Downloads/2023.csv")
+X2022 <- read.csv("D:/Usuarios/Admin/Downloads/2022.csv")
 dados <- rbind(X2024, X2023, X2022)
 head(dados)
 ```
@@ -67,28 +70,25 @@ upper_bound_preco <- quantile_preco[2] + 1.5 * IQR_preco
 upper_bound_quantidade <- quantile_quantidade[2] + 1.5 * IQR_quantidade
 
 # Identificando outliers considerando os limites ajustados para preco
-outliers_preco <- dados %>% 
-  filter(preco > upper_bound_preco)
+outliers_preco_count <- nrow(dados %>% 
+  filter(preco > upper_bound_preco))
 
 # Identificando outliers considerando os limites ajustados para quantidade
-outliers_quantidade <- dados %>% 
-  filter(quantidade > upper_bound_quantidade)
+outliers_quantidade_count <- nrow(dados %>% 
+  filter(quantidade > upper_bound_quantidade))
 
 # Visualização dos resultados
+cat("Numero de Outliers em Preco:", outliers_preco_count, "\n")
+cat("Numero de Outliers em Quantidade:", outliers_quantidade_count, "\n")
+
 print("Ajustes nos Limiares:")
 print(paste("Limite Inferior Preco:", lower_bound_preco))
 print(paste("Limite Superior Preco:", upper_bound_preco))
 print(paste("Limite Inferior Quantidade:", lower_bound_quantidade))
 print(paste("Limite Superior Quantidade:", upper_bound_quantidade))
-
-print("Outliers em Preco:")
-print(outliers_preco)
-
-print("Outliers em Quantidade:")
-print(outliers_quantidade)
 ```
 
-Com o calculo do interquartil não foi encontrado nenhum outlier.
+Com o calculo do interquartil foram encontrados outliers apenas nos dados de preco sendo 1.683.725 outliers.
 
 # Analise Bivariada
 
@@ -96,7 +96,7 @@ Com o calculo do interquartil não foi encontrado nenhum outlier.
 
 ```{r scatterplot}
 # Gráfico de dispersão entre preço e quantidade
-ggplot(dados, aes(x = quantidade, y = preco)) +
+ggplot(X2024, aes(x = quantidade, y = preco)) +
   geom_point(alpha = 0.5) +
   ggtitle("Dispersão entre Preço e Quantidade") +
   xlab("Quantidade") +
@@ -181,7 +181,7 @@ Esta análise sugere uma estrutura mais simplificada e clara, onde as duas vari�
 
 Na analise univariada ao aplicar o histograma é possivel perceber a frenquencia com que essas quantidades são vendidas e podemos perceber a partir dela que temos uma menor frequencia de vendas de sete ou mais produtos, tendo uma frenquencia muito mais relevante na venda de até seis produtos.
 
-Na analise bivariada usando da matriz de correlação e do grafico de dispersão podemos perceber mais sobre a correlação preco/quantidade, no grafico de dispersão parece termos uma correlação grande entre essas variaveis, mas ao ver a matriz de correlação percebemos que a correlação entre essas variaveis é de 0.38 o que não é algo tão alto.
+Na analise bivariada usando da matriz de correlação e do grafico de dispersão podemos perceber mais sobre a correlação preco/quantidade, no grafico de dispersão parece termos uma correlação grande entre essas variaveis, mas ao ver a matriz de correlação percebemos que a correlação entre essas variaveis é de 0.37 o que não é algo tão alto.
 
 Na analise multivariada fizemos duas analises uma com os dados preco, quantidade, cod_vendedor e cod_prod e outra apenas com preco e quantidade das quais obtivemos resultados bem diferentes, é descorrido mais sobre o assunto na seção "Interpretação dos componentes principais"
 
